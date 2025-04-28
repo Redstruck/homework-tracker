@@ -12,4 +12,5 @@ export interface ChatMessage {
   content: string;
   sender: "user" | "assistant";
   timestamp: Date;
+  isImage?: boolean;
 }

@@ -1,10 +1,11 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage } from '../lib/types';
-import { getAIResponse, generateId } from '../lib/aiHelpers';
+import { generateId } from '../lib/aiHelpers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Send, ArrowLeft, Image } from 'lucide-react';
+import { useHandleStreamResponse } from '../lib/useHandleStreamResponse';
 
 interface ChatInterfaceProps {
   onExit: () => void;
@@ -23,6 +24,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onExit }) => {
   const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [streamingMessage, setStreamingMessage] = useState('');
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -30,7 +32,23 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onExit }) => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, streamingMessage]);
+
+  const handleStreamResponse = useHandleStreamResponse({
+    onChunk: setStreamingMessage,
+    onFinish: (message) => {
+      const newAIMessage: ChatMessage = {
+        id: generateId(),
+        content: message,
+        sender: 'assistant',
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, newAIMessage]);
+      setStreamingMessage('');
+      setIsLoading(false);
+    }
+  });
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -47,39 +65,46 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onExit }) => {
       };
       setMessages(prev => [...prev, newImageMessage]);
 
-      // Trigger AI response for the image
-      handleAIResponse('Analyzing the uploaded image...');
+      // Inform the user we can't process images with the current integration
+      handleAIResponse("I see you've uploaded an image, but our current ChatGPT integration doesn't support image analysis. Can I help you with something else?");
     };
     reader.readAsDataURL(file);
   };
 
   const handleAIResponse = async (userMessage: string) => {
     try {
-      const response = await getAIResponse(userMessage);
+      setIsLoading(true);
       
-      let limitedResponse = response;
-      const words = response.split(' ');
-      if (words.length > 180) {
-        limitedResponse = words.slice(0, 180).join(' ') + '...';
-      }
+      const response = await fetch("/integrations/chat-gpt/conversationgpt4", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "system",
+              content: "You are a helpful homework assistant. Help the student understand their assignments and provide guidance. Keep responses concise, under 200 words."
+            },
+            ...messages.map(msg => ({
+              role: msg.sender === 'user' ? 'user' : 'assistant',
+              content: msg.content
+            })),
+            { role: "user", content: userMessage }
+          ],
+          stream: true,
+        }),
+      });
       
-      const newAIMessage: ChatMessage = {
-        id: generateId(),
-        content: limitedResponse,
-        sender: 'assistant',
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, newAIMessage]);
+      handleStreamResponse(response);
     } catch (error) {
       console.error('Error getting AI response:', error);
       const errorMessage: ChatMessage = {
         id: generateId(),
-        content: 'Sorry, I had trouble processing that. Could you try again?',
+        content: 'Sorry, I had trouble connecting to ChatGPT. Please try again later.',
         sender: 'assistant',
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
+      setIsLoading(false);
     }
   };
 
@@ -98,10 +123,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onExit }) => {
     };
     
     setMessages(prev => [...prev, newUserMessage]);
-    setIsLoading(true);
-    
     await handleAIResponse(userMessage);
-    setIsLoading(false);
   };
 
   return (
@@ -143,6 +165,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onExit }) => {
             </div>
           </div>
         ))}
+        
+        {streamingMessage && (
+          <div className="flex justify-start">
+            <div className="max-w-[75%] rounded-lg p-3 bg-gray-100 text-gray-900">
+              <p className="text-sm">{streamingMessage}</p>
+            </div>
+          </div>
+        )}
+        
         <div ref={messagesEndRef} />
       </div>
       

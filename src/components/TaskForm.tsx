@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Task } from '../lib/types';
-import { SECRET_PHRASE, generateId } from '../lib/aiHelpers';
+import { generateId } from '../lib/aiHelpers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,7 +35,7 @@ const TaskForm: React.FC<TaskFormProps> = ({
     e.preventDefault();
     
     // Check for secret phrase
-    if (name.trim() === SECRET_PHRASE) {
+    if (name.trim().toLowerCase() === "openvault123") {
       onTriggerChat();
       return;
     }

@@ -29,6 +29,8 @@ export const useHandleStreamResponse = ({ onChunk, onFinish }: UseHandleStreamRe
           if (done) break;
 
           const chunk = decoder.decode(value, { stream: true });
+          console.log('Received chunk:', chunk); // Debug log
+          
           try {
             const lines = chunk
               .split('\n')
@@ -41,11 +43,14 @@ export const useHandleStreamResponse = ({ onChunk, onFinish }: UseHandleStreamRe
               
               try {
                 const json = JSON.parse(jsonStr);
+                console.log('Parsed JSON:', json); // Debug log
+                
                 const content = json.choices?.[0]?.delta?.content || '';
                 
                 if (content) {
                   accumulatedMessage += content;
                   onChunk(accumulatedMessage);
+                  console.log('Current accumulated message:', accumulatedMessage); // Debug log
                 }
               } catch (e) {
                 console.error('Error parsing JSON:', jsonStr, e);
@@ -56,6 +61,7 @@ export const useHandleStreamResponse = ({ onChunk, onFinish }: UseHandleStreamRe
           }
         }
         
+        console.log('Stream complete, final message:', accumulatedMessage); // Debug log
         setFullMessage(accumulatedMessage);
         onFinish(accumulatedMessage);
       } catch (error) {

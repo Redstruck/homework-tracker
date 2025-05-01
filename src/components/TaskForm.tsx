@@ -10,14 +10,12 @@ interface TaskFormProps {
   onSubmit: (task: Task) => void;
   onCancel: () => void;
   editingTask: Task | null;
-  onTriggerChat: () => void;
 }
 
 const TaskForm: React.FC<TaskFormProps> = ({ 
   onSubmit, 
   onCancel, 
-  editingTask,
-  onTriggerChat
+  editingTask 
 }) => {
   const [subject, setSubject] = useState('');
   const [name, setName] = useState('');
@@ -33,12 +31,6 @@ const TaskForm: React.FC<TaskFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Check for secret phrase
-    if (name.trim().toLowerCase() === "openvault123") {
-      onTriggerChat();
-      return;
-    }
     
     const task: Task = {
       id: editingTask?.id || generateId(),

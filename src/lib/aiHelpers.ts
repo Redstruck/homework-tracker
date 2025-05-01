@@ -1,9 +1,6 @@
 
 import { ChatMessage } from "./types";
 
-// Secret trigger phrase to access the chat
-export const SECRET_PHRASE = "openvault123";
-
 // Simple implementation for AI responses
 export async function getAIResponse(userMessage: string): Promise<string> {
   // This is a placeholder function that simulates AI responses
